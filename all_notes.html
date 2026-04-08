@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Tất cả ghi chú</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 20px 40px;
+            background-color: #f9f9f9;
+        }
+        .header {
+            background-color: #fff;
+            padding: 15px 20px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            margin-bottom: 25px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        h1 {
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+            color: #333;
+            margin-top: 0;
+        }
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 15px;
+            gap: 20px;
+        }
+        .storage-info {
+            flex-grow: 1;
+        }
+        .storage-info label {
+            font-weight: bold;
+            font-size: 14px;
+            margin-right: 10px;
+        }
+        progress {
+            width: 100%;
+            height: 12px;
+            border-radius: 6px;
+        }
+        progress::-webkit-progress-bar { background-color: #eee; border-radius: 6px; }
+        progress.usage-normal::-webkit-progress-value { background-color: #28a745; }
+        progress.usage-warning::-webkit-progress-value { background-color: #ffc107; }
+        progress.usage-critical::-webkit-progress-value { background-color: #dc3545; }
+
+        .action-buttons button {
+            padding: 8px 12px;
+            font-size: 13px;
+            border: none;
+            border-radius: 4px;
+            color: white;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+        #export-btn { background-color: #007bff; }
+        #export-btn:hover { background-color: #0056b3; }
+        #export-json-btn { background-color: #17a2b8; }
+        #export-json-btn:hover { background-color: #138496; }
+        #import-json-btn { background-color: #28a745; }
+        #import-json-btn:hover { background-color: #218838; }
+        #delete-all-btn { background-color: #dc3545; }
+        #delete-all-btn:hover { background-color: #c82333; }
+        
+        .note-entry {
+            background-color: #fff; border: 1px solid #ddd; border-radius: 5px;
+            margin-bottom: 20px; padding: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .note-entry h2 { margin-top: 0; font-size: 1.2em; color: #0056b3; }
+        .note-entry pre { white-space: pre-wrap; word-wrap: break-word; font-family: sans-serif; font-size: 1em; color: #444; margin: 0; }
+        #loading, #empty { font-size: 1.1em; color: #777; font-style: italic; }
+        
+        .last-modified {
+            font-size: 0.85em;
+            color: #666;
+            font-style: italic;
+            margin-top: 5px;
+        }
+        
+        .edit-btn {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+        .edit-btn:hover { background-color: #218838; }
+        
+        .save-btn {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+        .save-btn:hover { background-color: #0056b3; }
+        
+        .cancel-btn {
+            background-color: #6c757d;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-left: 5px;
+        }
+        .cancel-btn:hover { background-color: #5a6268; }
+        
+        .edit-form {
+            margin-top: 15px;
+        }
+        .edit-form textarea, .edit-form input {
+            width: 98%;
+            padding: 6px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-family: sans-serif;
+            font-size: 13px;
+            margin-bottom: 10px;
+        }
+        .edit-form textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+        .edit-form label {
+            display: block;
+            font-weight: bold;
+            font-size: 13px;
+            margin-top: 10px;
+            margin-bottom: 3px;
+        }
+        .edit-form .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Quản lý Ghi chú</h1>
+        <div class="storage-info">
+            <label for="storage-progress">Dung lượng đã dùng:</label>
+            <progress id="storage-progress" max="102400" value="0"></progress>
+            <span id="storage-text"></span>
+        </div>
+        <div class="controls">
+            <div></div>
+            <div class="action-buttons">
+                <button id="export-btn">Xuất ra file .txt</button>
+                <button id="export-json-btn">Xuất JSON</button>
+                <button id="import-json-btn">Nhập JSON</button>
+                <button id="delete-all-btn">Xóa toàn bộ ghi chú</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="notes-container">
+        <p id="loading">Đang tải dữ liệu...</p>
+    </div>
+
+    <script src="all_notes.js"></script>
+</body>
+</html>
