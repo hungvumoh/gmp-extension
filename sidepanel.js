@@ -64,7 +64,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Load PDF in viewer
+    let currentPdfUrl = null;
     function loadPDFInViewer(url) {
+        currentPdfUrl = url;
         pdfViewer.container.style.display = 'block';
         
         let cacheIndex = pdfViewer.cache.indexOf(url);
@@ -80,6 +82,39 @@ document.addEventListener('DOMContentLoaded', () => {
             frame.style.display = (index === cacheIndex) ? 'block' : 'none';
         });
     }
+
+    // ===================================================================
+    // VIEW LOGIC (Quick View & Ghost View)
+    // ===================================================================
+    function openQuickView(url) {
+        const viewerUrl = chrome.runtime.getURL('fullscreen_viewer.html') + '?url=' + encodeURIComponent(url);
+        chrome.windows.create({
+            url: viewerUrl,
+            type: 'popup',
+            state: 'maximized'
+        });
+    }
+
+    function sendGhostMessage(url) {
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            if (tabs[0]) {
+                chrome.tabs.sendMessage(tabs[0].id, { type: 'SHOW_GHOST_VIEW', url: url });
+            }
+        });
+    }
+
+    window.openQuickView = openQuickView;
+    window.sendGhostMessage = sendGhostMessage;
+
+    const quickViewMainBtn = document.getElementById('quick-view-main');
+    quickViewMainBtn.addEventListener('click', () => {
+        if (currentPdfUrl) openQuickView(currentPdfUrl);
+    });
+
+    const ghostViewMainBtn = document.getElementById('ghost-view-main');
+    ghostViewMainBtn.addEventListener('click', () => {
+        if (currentPdfUrl) sendGhostMessage(currentPdfUrl);
+    });
 
     // ===================================================================
     // DỮ LIỆU GHI CHÚ QUỐC GIA

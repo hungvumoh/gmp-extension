@@ -374,6 +374,10 @@
 
         <!-- PDF Viewer -->
         <div id="pdf-viewer-container">
+            <div class="viewer-controls">
+                <button class="quick-view-btn" id="quick-view-main">🔍 Xem nhanh</button>
+                <button class="quick-view-btn" id="ghost-view-main" style="background-color: #6f42c1; margin-left: 5px;">👻 Hiện lên web</button>
+            </div>
             <div id="pdf-viewer-wrapper">
                 <iframe class="pdf-frame"></iframe>
                 <iframe class="pdf-frame"></iframe>
@@ -474,6 +478,10 @@ Tái đánh giá:
         </div>
         
         <div id="ref-pdf-viewer-container">
+            <div class="viewer-controls">
+                <button class="quick-view-btn" id="quick-view-ref" style="background-color: #28a745;">🔍 Xem nhanh</button>
+                <button class="quick-view-btn" id="ghost-view-ref" style="background-color: #6f42c1; margin-left: 5px;">👻 Hiện lên web</button>
+            </div>
             <div id="ref-pdf-viewer-wrapper">
                 <iframe id="ref-pdf-frame" frameborder="0"></iframe>
             </div>

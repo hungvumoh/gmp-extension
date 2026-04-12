@@ -31,9 +31,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const refPdfFrame = document.getElementById('ref-pdf-frame');
     const refPdfWrapper = document.getElementById('ref-pdf-viewer-wrapper');
     const refResizeGrip = document.getElementById('ref-resize-grip');
+    const quickViewRefBtn = document.getElementById('quick-view-ref');
+    const ghostViewRefBtn = document.getElementById('ghost-view-ref');
+    let currentRefUrl = null;
 
     // Kiểm tra các element có tồn tại không
-    if (!refDocDropdown || !refPdfFrame || !refPdfWrapper || !refResizeGrip) {
+    if (!refDocDropdown || !refPdfFrame || !refPdfWrapper || !refResizeGrip || !quickViewRefBtn || !ghostViewRefBtn) {
         console.error('Reference docs elements not found');
         return;
     }
@@ -48,14 +51,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Load tài liệu đầu tiên mặc định
     if (REFERENCE_DOCUMENTS.length > 0) {
-        refDocDropdown.value = REFERENCE_DOCUMENTS[0].url;
-        refPdfFrame.src = REFERENCE_DOCUMENTS[0].url + '#toolbar=1';
+        currentRefUrl = REFERENCE_DOCUMENTS[0].url;
+        refDocDropdown.value = currentRefUrl;
+        refPdfFrame.src = currentRefUrl + '#toolbar=1';
     }
 
     // Xử lý khi chọn tài liệu từ dropdown
     refDocDropdown.addEventListener('change', (e) => {
         if (e.target.value) {
-            refPdfFrame.src = e.target.value + '#toolbar=1';
+            currentRefUrl = e.target.value;
+            refPdfFrame.src = currentRefUrl + '#toolbar=1';
+        }
+    });
+
+    // Xử lý nút Xem nhanh
+    quickViewRefBtn.addEventListener('click', () => {
+        if (currentRefUrl && typeof window.openQuickView === 'function') {
+            window.openQuickView(currentRefUrl);
+        }
+    });
+
+    // Xử lý nút Ghost View
+    ghostViewRefBtn.addEventListener('click', () => {
+        if (currentRefUrl && typeof window.sendGhostMessage === 'function') {
+            window.sendGhostMessage(currentRefUrl);
         }
     });
 

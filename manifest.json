@@ -21,6 +21,13 @@
     "service_worker": "service-worker.js"
   },
 
+  "content_scripts": [
+    {
+      "matches": ["https://dichvucong.dav.gov.vn/*"],
+      "js": ["content_script.js"]
+    }
+  ],
+
   "action": {
     "default_title": "Tạo ô ghi chú và mục lục PDF"
   },
