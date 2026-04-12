@@ -35,6 +35,8 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            min-width: 300px;
+            min-height: 200px;
             opacity: 0.8;
             transition: opacity 0.2s;
         `;
@@ -85,6 +87,21 @@
         iframeWrapper.appendChild(iframe);
         ghostContainer.appendChild(header);
         ghostContainer.appendChild(iframeWrapper);
+
+        // Nút kéo giãn (Resize Handle)
+        const resizer = document.createElement('div');
+        resizer.style.cssText = `
+            position: absolute;
+            right: 0;
+            bottom: 0;
+            width: 15px;
+            height: 15px;
+            cursor: nwse-resize;
+            background: linear-gradient(135deg, transparent 50%, #6f42c1 50%);
+            z-index: 10;
+        `;
+        ghostContainer.appendChild(resizer);
+
         document.body.appendChild(ghostContainer);
 
         // --- LOGIC XỬ LÝ ---
@@ -137,6 +154,28 @@
         const closeBtn = ghostContainer.querySelector('#ghost-close');
         closeBtn.addEventListener('click', () => {
             ghostContainer.style.display = 'none';
+        });
+
+        // 6. Kéo giãn (Resize Logic)
+        resizer.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            const startWidth = ghostContainer.offsetWidth;
+            const startHeight = ghostContainer.offsetHeight;
+            const startX = e.clientX;
+            const startY = e.clientY;
+
+            const onMouseMove = (moveEvent) => {
+                ghostContainer.style.width = (startWidth + (moveEvent.clientX - startX)) + 'px';
+                ghostContainer.style.height = (startHeight + (moveEvent.clientY - startY)) + 'px';
+            };
+
+            const onMouseUp = () => {
+                document.removeEventListener('mousemove', onMouseMove);
+                document.removeEventListener('mouseup', onMouseUp);
+            };
+
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', onMouseUp);
         });
 
         // 5. Phím ESC
