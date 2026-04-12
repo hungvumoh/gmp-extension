@@ -4,6 +4,10 @@
 (function() {
     let ghostContainer = null;
     let fileSelector = null;
+    
+    // Lưu cài đặt độ trong suốt (Session-based)
+    let readingOpacity = 0.8;
+    let typingOpacity = 0.3;
 
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (message.type === 'SHOW_GHOST_VIEW') {
@@ -22,6 +26,10 @@
             const iframe = ghostContainer.querySelector('iframe');
             if (iframe) iframe.src = url;
             ghostContainer.style.display = 'flex';
+            
+            // Đồng bộ lại độ trong suốt theo chế độ hiện tại
+            const checkbox = ghostContainer.querySelector('#ghost-clickthru');
+            toggleClickthru(checkbox.checked);
             return;
         }
 
@@ -44,7 +52,7 @@
             overflow: hidden;
             min-width: 300px;
             min-height: 200px;
-            opacity: 0.8;
+            opacity: ${readingOpacity};
             transition: opacity 0.2s;
         `;
 
@@ -72,14 +80,14 @@
                 border-radius: 3px;
                 padding: 2px 5px;
                 font-size: 12px;
-                max-width: 280px;
+                max-width: 250px;
                 cursor: pointer;
                 outline: none;
             ">
             </select>
             <div style="display: flex; align-items: center; gap: 5px;">
                 <span>🌫️</span>
-                <input type="range" id="ghost-opacity" min="0.1" max="1.0" step="0.1" value="0.8" style="width: 60px; cursor: pointer;">
+                <input type="range" id="ghost-opacity" min="0.1" max="1.0" step="0.1" value="${readingOpacity}" style="width: 60px; cursor: pointer;">
             </div>
             <label style="display: flex; align-items: center; gap: 3px; cursor: pointer; background: rgba(255,255,255,0.2); padding: 2px 5px; border-radius: 3px; font-size: 11px;">
                 <input type="checkbox" id="ghost-clickthru"> Alt+T
@@ -128,20 +136,29 @@
 
         // --- LOGIC ---
         fileSelector = ghostContainer.querySelector('#ghost-file-selector');
-        
+        const opacityInput = ghostContainer.querySelector('#ghost-opacity');
+        const clickthruCheckbox = ghostContainer.querySelector('#ghost-clickthru');
+
         function toggleClickthru(isTransparent) {
-            const checkbox = ghostContainer.querySelector('#ghost-clickthru');
-            checkbox.checked = isTransparent;
+            clickthruCheckbox.checked = isTransparent;
             if (isTransparent) {
                 ghostContainer.style.pointerEvents = 'none';
                 ghostContainer.style.background = 'transparent';
                 ghostContainer.style.borderStyle = 'dashed';
                 iframeWrapper.style.pointerEvents = 'none';
+                
+                // Áp dụng opacity cho Typing mode
+                ghostContainer.style.opacity = typingOpacity;
+                opacityInput.value = typingOpacity;
             } else {
                 ghostContainer.style.pointerEvents = 'auto';
                 ghostContainer.style.background = 'white';
                 ghostContainer.style.borderStyle = 'solid';
                 iframeWrapper.style.pointerEvents = 'auto';
+                
+                // Áp dụng opacity cho Reading mode
+                ghostContainer.style.opacity = readingOpacity;
+                opacityInput.value = readingOpacity;
             }
         }
 
@@ -174,13 +191,18 @@
             header.style.background = '#6f42c1';
         });
 
-        // Opacity
-        ghostContainer.querySelector('#ghost-opacity').addEventListener('input', (e) => {
-            ghostContainer.style.opacity = e.target.value;
+        // Opacity - Lưu vào đúng chế độ
+        opacityInput.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            ghostContainer.style.opacity = val;
+            if (clickthruCheckbox.checked) {
+                typingOpacity = val;
+            } else {
+                readingOpacity = val;
+            }
         });
 
         // Xuyên thấu
-        const clickthruCheckbox = ghostContainer.querySelector('#ghost-clickthru');
         clickthruCheckbox.addEventListener('change', (e) => {
             toggleClickthru(e.target.checked);
         });
@@ -218,18 +240,14 @@
             if (e.key === 'Escape') ghostContainer.style.display = 'none';
             if (e.altKey && (e.key === 't' || e.key === 'T')) {
                 e.preventDefault();
-                const checkbox = ghostContainer.querySelector('#ghost-clickthru');
-                toggleClickthru(!checkbox.checked);
+                toggleClickthru(!clickthruCheckbox.checked);
             }
         });
     }
 
     function updateFileList(list, selectedUrl) {
         if (!fileSelector) return;
-        
-        // Lưu giữ giá trị hiện tại trước khi cập nhật
         const currentVal = selectedUrl || fileSelector.value;
-        
         fileSelector.innerHTML = '';
         list.forEach(file => {
             const option = document.createElement('option');
