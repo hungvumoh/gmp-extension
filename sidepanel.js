@@ -95,10 +95,37 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    function sendGhostMessage(url) {
+    function broadcastFileListUpdate() {
+        let combinedFiles = [...allDiscoveredFiles];
+        if (typeof REFERENCE_DOCUMENTS !== 'undefined') {
+            const refs = REFERENCE_DOCUMENTS.map(d => ({ name: d.title, url: d.url }));
+            combinedFiles = [...combinedFiles, ...refs];
+        }
+
         chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
             if (tabs[0]) {
-                chrome.tabs.sendMessage(tabs[0].id, { type: 'SHOW_GHOST_VIEW', url: url });
+                chrome.tabs.sendMessage(tabs[0].id, { 
+                    type: 'UPDATE_GHOST_FILE_LIST', 
+                    fileList: combinedFiles
+                }).catch(() => {});
+            }
+        });
+    }
+
+    function sendGhostMessage(url) {
+        let combinedFiles = [...allDiscoveredFiles];
+        if (typeof REFERENCE_DOCUMENTS !== 'undefined') {
+            const refs = REFERENCE_DOCUMENTS.map(d => ({ name: d.title, url: d.url }));
+            combinedFiles = [...combinedFiles, ...refs];
+        }
+
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            if (tabs[0]) {
+                chrome.tabs.sendMessage(tabs[0].id, { 
+                    type: 'SHOW_GHOST_VIEW', 
+                    url: url,
+                    fileList: combinedFiles
+                });
             }
         });
     }
@@ -136,6 +163,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const dropdownFileMap = new Map();
     let dropdownFileCount = 0;
+    let allDiscoveredFiles = [];
 
     fileDropdown.addEventListener('change', (e) => {
         const selectedIndex = e.target.value;
@@ -212,7 +240,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
-            // Clean URL để loại bỏ /u/X/
             const cleanUrl = WEB_APP_URL.replace(/\/macros\/u\/\d+\/s\//, '/macros/s/');
             
             const response = await fetch(cleanUrl, {
@@ -345,7 +372,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // ===================================================================
-    // LOGIC DANH MỤC PDF - ĐÃ SỬA ĐỂ LUÔN HIỂN THỊ
+    // LOGIC DANH MỤC PDF
     // ===================================================================
 
     chrome.runtime.onMessage.addListener((message) => {
@@ -354,11 +381,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 fileListEl.innerHTML = '';
                 statusEl.textContent = 'Đang chờ tín hiệu...';
                 pdfWindowId = null;
-                
-                // ✅ KHÔNG ẨN dropdown nữa, chỉ reset nội dung
                 fileDropdown.innerHTML = '<option value="">-- Chọn tài liệu để xem --</option>';
                 dropdownFileMap.clear();
                 dropdownFileCount = 0;
+                allDiscoveredFiles = [];
                 
                 pdfViewer.container.style.display = 'none';
                 pdfViewer.cache = [];
@@ -375,8 +401,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 foundCount = 0;
                 errorCount = 0;
                 pdfWindowId = null;
+                allDiscoveredFiles = [];
                 
-                // ✅ KHÔNG ẨN dropdown nữa
                 fileDropdown.innerHTML = '<option value="">-- Chọn tài liệu để xem --</option>';
                 dropdownFileMap.clear();
                 dropdownFileCount = 0;
@@ -390,6 +416,10 @@ document.addEventListener('DOMContentLoaded', () => {
             case 'FILE_FOUND':
                 foundCount++;
                 
+                // Lưu vào danh sách
+                allDiscoveredFiles.push({ name: message.file.name, url: message.file.url });
+                broadcastFileListUpdate();
+
                 const li = document.createElement('li');
                 li.textContent = `📄 ${message.file.name}`;
                 li.title = `Mở file: ${message.file.name}`;
@@ -429,10 +459,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             case 'PROCESS_COMPLETE':
                 statusEl.textContent = `Hoàn tất! Tìm thấy ${foundCount} file.`;
-                break;
-
-            case 'CLOSE_SIDEPANEL':
-                // Không xử lý - để người dùng tự đóng
                 break;
         }
     });
@@ -476,9 +502,7 @@ document.addEventListener('DOMContentLoaded', () => {
         searchResults.innerHTML = '<div id="search-loading">🔄 Đang tìm kiếm...</div>';
 
         try {
-            // Clean URL để loại bỏ /u/X/
             const cleanUrl = WEB_APP_URL.replace(/\/macros\/u\/\d+\/s\//, '/macros/s/');
-            
             const response = await fetch(`${cleanUrl}?q=${encodeURIComponent(query)}`);
             const results = await response.json();
 
@@ -519,26 +543,15 @@ document.addEventListener('DOMContentLoaded', () => {
     function showDetailModal(item) {
         const modal = document.createElement('div');
         modal.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.5);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 10000;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); display: flex; align-items: center;
+            justify-content: center; z-index: 10000;
         `;
         
         const content = document.createElement('div');
         content.style.cssText = `
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            max-width: 500px;
-            max-height: 80vh;
-            overflow-y: auto;
+            background: white; padding: 20px; border-radius: 8px;
+            max-width: 500px; max-height: 80vh; overflow-y: auto;
             box-shadow: 0 4px 20px rgba(0,0,0,0.3);
         `;
         
@@ -567,23 +580,10 @@ document.addEventListener('DOMContentLoaded', () => {
         modal.appendChild(content);
         document.body.appendChild(modal);
         
-        const closeModal = () => {
-            document.body.removeChild(modal);
-        };
-        
+        const closeModal = () => { document.body.removeChild(modal); };
         content.querySelector('#close-modal').addEventListener('click', closeModal);
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) closeModal();
-        });
+        modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
     }
 
-    // ===================================================================
-    // KHỞI TẠO
-    // ===================================================================
     initializeNoteFeature();
-
-    // ===================================================================
-    // XÓA CODE ĐÓNG SIDEPANEL TỰ ĐỘNG (KHÔNG CẦN THIẾT)
-    // ===================================================================
-    // Code cũ đã bị xóa để tránh lỗi sidePanel.close()
 });
