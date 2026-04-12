@@ -66,8 +66,9 @@
         header.innerHTML = `
             <select id="ghost-file-selector" style="
                 flex-grow: 1;
-                background: rgba(255,255,255,0.9);
-                border: none;
+                background: white;
+                color: black !important;
+                border: 1px solid #ccc;
                 border-radius: 3px;
                 padding: 2px 5px;
                 font-size: 12px;
