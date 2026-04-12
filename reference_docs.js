@@ -16,6 +16,11 @@ const REFERENCE_DOCUMENTS = [
         id: 'doc3',
         title: 'SOP GMP NN',
         url: 'https://drive.google.com/file/d/1e1qS1ULiAG1kJo41E_D6gX_7P1gBZKKq/preview'
+    },
+    {
+        id: 'doc4',
+        title: 'SMF guideline - WHO',
+        url: 'https://drive.google.com/file/d/1OvPdIoxOThQDSb6f9ZADba8PtiCY7xCF/preview'
     }
     // Thêm tối đa 10 tài liệu tại đây
     // Nhớ thay YOUR_FILE_ID bằng ID thực từ Google Drive
