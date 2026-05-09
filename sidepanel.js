@@ -271,6 +271,64 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    async function fetchNoteByCode(dossierCode) {
+        if (!WEB_APP_URL || !dossierCode) return;
+
+        saveBtn.textContent = '🔄 Đang kiểm tra dữ liệu cũ...';
+        saveBtn.disabled = true;
+
+        try {
+            const cleanUrl = WEB_APP_URL.replace(/\/macros\/u\/\d+\/s\//, '/macros/s/');
+            const response = await fetch(`${cleanUrl}?q=${encodeURIComponent(dossierCode)}`);
+            const results = await response.json();
+
+            // Tìm kết quả khớp chính xác mã hồ sơ
+            const exactMatch = results.find(item => item.dossierCode === dossierCode);
+
+            if (exactMatch) {
+                fillNoteForm(exactMatch);
+                saveBtn.textContent = '✅ Đã tải dữ liệu cũ';
+                setTimeout(() => {
+                    saveBtn.textContent = 'Lưu Ghi Chú';
+                    saveBtn.disabled = false;
+                }, 1500);
+            } else {
+                saveBtn.textContent = 'Lưu Ghi Chú';
+                saveBtn.disabled = false;
+            }
+        } catch (error) {
+            console.error('Lỗi khi tải dữ liệu cũ:', error);
+            saveBtn.textContent = 'Lưu Ghi Chú';
+            saveBtn.disabled = false;
+        }
+    }
+
+    function fillNoteForm(data) {
+        readingNotesTextarea.value = data.readingNotes || '';
+        facilityName.value = data.facilityName || '';
+        facilityAddress.value = data.facilityAddress || '';
+        certScope.value = data.certScope || '';
+        publishedScope.value = data.publishedScope || '';
+        gmpPrinciple.value = data.gmpPrinciple || '';
+        certNumber.value = data.certNumber || '';
+        
+        // Xử lý định dạng ngày (nếu có)
+        if (data.issueDate) {
+            try {
+                const date = new Date(data.issueDate);
+                if (!isNaN(date)) issueDate.value = date.toISOString().split('T')[0];
+            } catch(e) {}
+        }
+        if (data.expiryDate) {
+            try {
+                const date = new Date(data.expiryDate);
+                if (!isNaN(date)) expiryDate.value = date.toISOString().split('T')[0];
+            } catch(e) {}
+        }
+        
+        issuingAuthority.value = data.issuingAuthority || '';
+    }
+
     async function initializeNoteFeature() {
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
         if (!tab) return;
@@ -304,6 +362,9 @@ document.addEventListener('DOMContentLoaded', () => {
             issueDate.value = '';
             expiryDate.value = '';
             issuingAuthority.value = '';
+
+            // Tự động tải dữ liệu từ Sheet
+            fetchNoteByCode(dossierCode);
 
             if (hostCountry && countryNotes[hostCountry]) {
                 const noteText = countryNotes[hostCountry];

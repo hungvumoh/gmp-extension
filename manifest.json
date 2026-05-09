@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "GMP-NN",
-  "version": "6.4",
+  "version": "7.0",
   "description": "Hỗ trợ Phòng QLCL trong việc đọc hồ sơ GMP NN",
   
   "permissions": [
