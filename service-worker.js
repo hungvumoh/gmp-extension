@@ -1,10 +1,6 @@
 // File: service-worker.js (Đã sửa race condition)
 
 chrome.action.onClicked.addListener(async (tab) => {
-    if (!tab.url || !tab.url.startsWith('https://dichvucong.dav.gov.vn/')) {
-        return;
-    }
-    
     // Mở sidepanel
     await chrome.sidePanel.open({ windowId: tab.windowId });
     await chrome.storage.session.clear();
