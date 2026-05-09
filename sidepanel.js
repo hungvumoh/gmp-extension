@@ -347,16 +347,15 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
         
-        const key = `SESSION_DATA_${currentDossierCode}`;
-        await chrome.storage.session.set({ [key]: sessionData });
+        await chrome.storage.session.set({ 'LATEST_DOSSIER_DATA': sessionData });
     }
 
     async function loadSessionData(dossierCode) {
-        const key = `SESSION_DATA_${dossierCode}`;
-        const result = await chrome.storage.session.get(key);
-        const data = result[key];
+        const result = await chrome.storage.session.get('LATEST_DOSSIER_DATA');
+        const data = result['LATEST_DOSSIER_DATA'];
         
-        if (!data) return false;
+        // Kiểm tra xem có dữ liệu không VÀ mã hồ sơ có khớp không
+        if (!data || data.dossierCode !== dossierCode) return false;
         
         // 1. Phục hồi danh sách file
         allDiscoveredFiles = data.files || [];
