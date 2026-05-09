@@ -181,8 +181,26 @@
 
         document.addEventListener('mousemove', (e) => {
             if (!isDragging) return;
-            ghostContainer.style.left = (e.clientX - offsetX) + 'px';
-            ghostContainer.style.top = (e.clientY - offsetY) + 'px';
+            
+            let newLeft = e.clientX - offsetX;
+            let newTop = e.clientY - offsetY;
+
+            // --- GIỚI HẠN BIÊN (BOUNDARIES) ---
+            // 1. Không cho vượt quá mép trên (Tránh bị ẩn header)
+            if (newTop < 0) newTop = 0;
+
+            // 2. Không cho vượt quá mép dưới (Giữ ít nhất 30px tiêu đề)
+            const viewportHeight = window.innerHeight;
+            if (newTop > viewportHeight - 30) newTop = viewportHeight - 30;
+
+            // 3. Không cho vượt quá mép trái/phải (Giữ ít nhất 50px để có thể kéo lại)
+            const viewportWidth = window.innerWidth;
+            const containerWidth = ghostContainer.offsetWidth;
+            if (newLeft < -containerWidth + 50) newLeft = -containerWidth + 50;
+            if (newLeft > viewportWidth - 50) newLeft = viewportWidth - 50;
+
+            ghostContainer.style.left = newLeft + 'px';
+            ghostContainer.style.top = newTop + 'px';
             ghostContainer.style.right = 'auto';
         });
 
