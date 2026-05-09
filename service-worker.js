@@ -3,7 +3,6 @@
 chrome.action.onClicked.addListener(async (tab) => {
     // Mở sidepanel
     await chrome.sidePanel.open({ windowId: tab.windowId });
-    await chrome.storage.session.clear();
 
     // ✅ ĐỢI SIDEPANEL GỬI TÍN HIỆU "SẴN SÀNG"
     const readyListener = (message, sender, sendResponse) => {

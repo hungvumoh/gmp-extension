@@ -7,11 +7,6 @@ const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbznyTF3mIx1zFGQ5-fT
 // ===================================================================
 document.addEventListener('DOMContentLoaded', () => {
     // ===================================================================
-    // GỬI TÍN HIỆU "SIDEPANEL ĐÃ SẴN SÀNG"
-    // ===================================================================
-    chrome.runtime.sendMessage({ type: 'SIDEPANEL_READY' });
-
-    // ===================================================================
     // LOGIC CHUYỂN TAB
     // ===================================================================
     const tabButtons = document.querySelectorAll('.tab-button');
@@ -329,6 +324,102 @@ document.addEventListener('DOMContentLoaded', () => {
         issuingAuthority.value = data.issuingAuthority || '';
     }
 
+    // ===================================================================
+    // LOGIC BỘ NHỚ PHIÊN (SESSION STORAGE)
+    // ===================================================================
+    async function saveSessionData() {
+        if (!currentDossierCode) return;
+        
+        const sessionData = {
+            dossierCode: currentDossierCode,
+            files: allDiscoveredFiles,
+            noteData: {
+                readingNotes: readingNotesTextarea.value,
+                facilityName: facilityName.value,
+                facilityAddress: facilityAddress.value,
+                certScope: certScope.value,
+                publishedScope: publishedScope.value,
+                gmpPrinciple: gmpPrinciple.value,
+                certNumber: certNumber.value,
+                issueDate: issueDate.value,
+                expiryDate: expiryDate.value,
+                issuingAuthority: issuingAuthority.value
+            }
+        };
+        
+        const key = `SESSION_DATA_${currentDossierCode}`;
+        await chrome.storage.session.set({ [key]: sessionData });
+    }
+
+    async function loadSessionData(dossierCode) {
+        const key = `SESSION_DATA_${dossierCode}`;
+        const result = await chrome.storage.session.get(key);
+        const data = result[key];
+        
+        if (!data) return false;
+        
+        // 1. Phục hồi danh sách file
+        allDiscoveredFiles = data.files || [];
+        allDiscoveredFiles.forEach(file => {
+            addFileToListUI(file);
+        });
+        
+        if (allDiscoveredFiles.length > 0) {
+            statusEl.textContent = `Đã tải ${allDiscoveredFiles.length} file từ bộ nhớ.`;
+        }
+
+        // 2. Phục hồi ghi chú nháp
+        if (data.noteData) {
+            readingNotesTextarea.value = data.noteData.readingNotes || '';
+            facilityName.value = data.noteData.facilityName || '';
+            facilityAddress.value = data.noteData.facilityAddress || '';
+            certScope.value = data.noteData.certScope || '';
+            publishedScope.value = data.noteData.publishedScope || '';
+            gmpPrinciple.value = data.noteData.gmpPrinciple || '';
+            certNumber.value = data.noteData.certNumber || '';
+            issueDate.value = data.noteData.issueDate || '';
+            expiryDate.value = data.noteData.expiryDate || '';
+            issuingAuthority.value = data.noteData.issuingAuthority || '';
+        }
+        
+        return true;
+    }
+
+    function addFileToListUI(file) {
+        const li = document.createElement('li');
+        li.textContent = `📄 ${file.name}`;
+        li.title = `Mở file: ${file.name}`;
+        li.classList.add('clickable');
+        li.dataset.fileUrl = file.url;
+        
+        li.addEventListener('click', () => {
+            const fileUrl = li.dataset.fileUrl;
+            loadPDFInViewer(fileUrl);
+            document.querySelectorAll('#file-list li').forEach(item => {
+                item.classList.remove('viewing');
+            });
+            li.classList.add('viewing');
+        });
+        
+        fileListEl.appendChild(li);
+        
+        dropdownFileCount++;
+        const option = document.createElement('option');
+        option.value = dropdownFileCount;
+        option.textContent = `📄 ${file.name}`;
+        fileDropdown.appendChild(option);
+        dropdownFileMap.set(dropdownFileCount.toString(), file.url);
+    }
+
+    // Tự động lưu khi gõ
+    const formInputs = [
+        readingNotesTextarea, facilityName, facilityAddress, certScope, 
+        publishedScope, gmpPrinciple, certNumber, issueDate, expiryDate, issuingAuthority
+    ];
+    formInputs.forEach(input => {
+        input.addEventListener('input', saveSessionData);
+    });
+
     async function initializeNoteFeature() {
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
         if (!tab) return;
@@ -352,19 +443,27 @@ document.addEventListener('DOMContentLoaded', () => {
             noteLabel.textContent = `Ghi chú hồ sơ số: ${currentDossierCode}`;
             noteFieldset.disabled = false;
 
-            readingNotesTextarea.value = '';
-            facilityName.value = '';
-            facilityAddress.value = '';
-            certScope.value = '';
-            publishedScope.value = '';
-            gmpPrinciple.value = '';
-            certNumber.value = '';
-            issueDate.value = '';
-            expiryDate.value = '';
-            issuingAuthority.value = '';
+            // Kiểm tra bộ nhớ phiên trước
+            const hasCachedData = await loadSessionData(dossierCode);
+            
+            if (!hasCachedData) {
+                // Nếu không có cache mới gửi lệnh quét PDF
+                chrome.runtime.sendMessage({ type: 'SIDEPANEL_READY' });
+                
+                readingNotesTextarea.value = '';
+                facilityName.value = '';
+                facilityAddress.value = '';
+                certScope.value = '';
+                publishedScope.value = '';
+                gmpPrinciple.value = '';
+                certNumber.value = '';
+                issueDate.value = '';
+                expiryDate.value = '';
+                issuingAuthority.value = '';
 
-            // Tự động tải dữ liệu từ Sheet
-            fetchNoteByCode(dossierCode);
+                // Tự động tải dữ liệu từ Sheet (chỉ khi không có cache)
+                fetchNoteByCode(dossierCode);
+            }
 
             if (hostCountry && countryNotes[hostCountry]) {
                 const noteText = countryNotes[hostCountry];
@@ -478,34 +577,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 foundCount++;
                 
                 // Lưu vào danh sách
-                allDiscoveredFiles.push({ name: message.file.name, url: message.file.url });
+                const newFile = { name: message.file.name, url: message.file.url };
+                allDiscoveredFiles.push(newFile);
                 broadcastFileListUpdate();
+                saveSessionData(); // Lưu vào bộ nhớ phiên ngay lập tức
 
-                const li = document.createElement('li');
-                li.textContent = `📄 ${message.file.name}`;
-                li.title = `Mở file: ${message.file.name}`;
-                li.classList.add('clickable');
-                li.dataset.fileUrl = message.file.url;
-                
-                li.addEventListener('click', () => {
-                    const fileUrl = li.dataset.fileUrl;
-                    loadPDFInViewer(fileUrl);
-                    
-                    document.querySelectorAll('#file-list li').forEach(item => {
-                        item.classList.remove('viewing');
-                    });
-                    li.classList.add('viewing');
-                });
-                
-                fileListEl.appendChild(li);
-                
-                dropdownFileCount++;
-                const option = document.createElement('option');
-                option.value = dropdownFileCount;
-                option.textContent = `📄 ${message.file.name}`;
-                fileDropdown.appendChild(option);
-                dropdownFileMap.set(dropdownFileCount.toString(), message.file.url);
-                
+                addFileToListUI(newFile);
                 updateStatus();
                 break;
                 
