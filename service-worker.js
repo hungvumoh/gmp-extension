@@ -3,27 +3,30 @@
 chrome.action.onClicked.addListener(async (tab) => {
     // Mở sidepanel
     await chrome.sidePanel.open({ windowId: tab.windowId });
+    // Lưu Tab ID để dùng cho listener toàn cục
+    chrome.storage.session.set({ 'lastActiveTabId': tab.id });
+});
 
-    // ✅ ĐỢI SIDEPANEL GỬI TÍN HIỆU "SẴN SÀNG"
-    const readyListener = (message, sender, sendResponse) => {
-        if (message.type === 'SIDEPANEL_READY') {
-            chrome.runtime.onMessage.removeListener(readyListener);
-            
-            // Delay thêm 300ms để đảm bảo listener đã được đăng ký hoàn toàn
+// Listener TOÀN CỤC - Duy nhất và cố định
+chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
+    if (message.type === 'SIDEPANEL_READY') {
+        const result = await chrome.storage.session.get('lastActiveTabId');
+        const tabId = result.lastActiveTabId;
+        
+        if (tabId) {
+            // Đảm bảo chỉ chạy 1 lần duy nhất cho mỗi tín hiệu READY
             setTimeout(() => {
                 // Gửi message RESET
                 chrome.runtime.sendMessage({ type: 'RESET' });
                 
                 // Bắt đầu quét PDF
                 chrome.scripting.executeScript({
-                    target: { tabId: tab.id },
+                    target: { tabId: tabId },
                     function: getPdfLinksAndNames,
                 });
             }, 300);
         }
-    };
-    
-    chrome.runtime.onMessage.addListener(readyListener);
+    }
 });
 
 function getPdfLinksAndNames() {
