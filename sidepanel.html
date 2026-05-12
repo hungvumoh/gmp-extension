@@ -360,6 +360,7 @@
         <button class="tab-button" data-tab="ghichu">Ghi chú</button>
         <button class="tab-button" data-tab="timkiem">Tìm kiếm</button>
         <button class="tab-button" data-tab="tailieu">Tài liệu</button>
+        <button class="tab-button" data-tab="danhgia">Đánh giá</button>
     </div>
 
     <!-- Tab Content: Hồ sơ -->
@@ -488,6 +489,55 @@ Tái đánh giá:
             <div id="ref-resize-grip">⋮⋮ Kéo để thay đổi chiều cao</div>
         </div>
     </div>
+
+    <!-- Tab Content: Đánh giá -->
+    <div class="tab-content" id="tab-danhgia">
+        <div style="margin-bottom: 15px;">
+            <button id="send-for-review-btn" style="width: 100%; padding: 12px; background-color: #28a745; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">
+                🚀 Gửi hồ sơ để đánh giá
+            </button>
+        </div>
+        
+        <div id="review-loading" style="display: none; text-align: center; padding: 20px;">
+            <div style="margin-bottom: 10px;">🔄 Đang xử lý tài liệu...</div>
+            <div id="review-progress" style="font-size: 12px; color: #666;"></div>
+        </div>
+
+        <div id="review-results-container" style="display: none;">
+            <h3 style="margin-top: 0;">Kết quả đánh giá</h3>
+            <div id="review-list">
+                <!-- Row template -->
+            </div>
+            
+            <div style="margin-top: 20px; padding: 15px; background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px;">
+                <div style="font-weight: bold; margin-bottom: 5px; color: #333;">Kết luận chung:</div>
+                <div id="review-overall-conclusion" style="line-height: 1.4;"></div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .review-row {
+            display: flex;
+            align-items: flex-start;
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .review-row:last-child { border-bottom: none; }
+        .review-status-icon {
+            font-size: 18px;
+            margin-right: 12px;
+            min-width: 24px;
+            text-align: center;
+        }
+        .review-doc-info { flex: 1; }
+        .review-doc-name { font-weight: 600; font-size: 13px; margin-bottom: 2px; }
+        .review-doc-comment { font-size: 12px; color: #555; line-height: 1.3; }
+        
+        .status-pass { color: #28a745; }
+        .status-warning { color: #ffc107; }
+        .status-fail { color: #dc3545; }
+    </style>
 
     <script src="sidepanel.js"></script>
     <script src="reference_docs.js"></script>

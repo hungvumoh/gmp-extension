@@ -14,7 +14,8 @@
 
   "host_permissions": [
     "https://dichvucong.dav.gov.vn/*",
-    "https://script.google.com/*"
+    "https://script.google.com/*",
+    "http://localhost:8000/*"
   ],
 
   "background": {

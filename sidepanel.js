@@ -722,5 +722,129 @@ document.addEventListener('DOMContentLoaded', () => {
         modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
     }
 
+    // ===================================================================
+    // TÍNH NĂNG ĐÁNH GIÁ HỒ SƠ
+    // ===================================================================
+    const sendForReviewBtn = document.getElementById('send-for-review-btn');
+    const reviewLoading = document.getElementById('review-loading');
+    const reviewProgress = document.getElementById('review-progress');
+    const reviewResultsContainer = document.getElementById('review-results-container');
+    const reviewList = document.getElementById('review-list');
+    const overallConclusion = document.getElementById('review-overall-conclusion');
+
+    sendForReviewBtn.addEventListener('click', async () => {
+        if (allDiscoveredFiles.length === 0) {
+            alert('Không có tài liệu nào để đánh giá.');
+            return;
+        }
+
+        // UI Reset
+        sendForReviewBtn.disabled = true;
+        reviewLoading.style.display = 'block';
+        reviewResultsContainer.style.display = 'none';
+        reviewList.innerHTML = '';
+        reviewProgress.textContent = `Chuẩn bị xử lý ${allDiscoveredFiles.length} file...`;
+
+        try {
+            // Fetch and convert PDFs in parallel
+            const filePromises = allDiscoveredFiles.map(async (file, index) => {
+                try {
+                    const response = await fetch(file.url);
+                    const blob = await response.blob();
+                    const base64 = await blobToBase64(blob);
+                    
+                    reviewProgress.textContent = `Đang xử lý: ${index + 1}/${allDiscoveredFiles.length} file...`;
+                    
+                    return {
+                        name: file.name,
+                        base64: base64
+                    };
+                } catch (err) {
+                    console.error(`Lỗi khi xử lý file ${file.name}:`, err);
+                    return null;
+                }
+            });
+
+            const processedFiles = (await Promise.all(filePromises)).filter(f => f !== null);
+
+            if (processedFiles.length === 0) {
+                throw new Error('Không thể tải bất kỳ file nào.');
+            }
+
+            reviewProgress.textContent = 'Đang gửi dữ liệu lên máy chủ...';
+
+            // POST to mock backend
+            const backendResponse = await fetch('http://localhost:8000/review-dossier', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ files: processedFiles })
+            });
+
+            if (!backendResponse.ok) {
+                throw new Error('Máy chủ phản hồi lỗi: ' + backendResponse.status);
+            }
+
+            const results = await backendResponse.json();
+            renderReviewResults(results);
+
+        } catch (error) {
+            console.error('Lỗi đánh giá:', error);
+            alert('Có lỗi xảy ra trong quá trình đánh giá: ' + error.message);
+        } finally {
+            sendForReviewBtn.disabled = false;
+            reviewLoading.style.display = 'none';
+        }
+    });
+
+    function blobToBase64(blob) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                const base64String = reader.result.split(',')[1];
+                resolve(base64String);
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
+    }
+
+    function renderReviewResults(data) {
+        reviewList.innerHTML = '';
+        
+        data.reviews.forEach(review => {
+            const row = document.createElement('div');
+            row.className = 'review-row';
+            
+            let statusIcon = '❓';
+            let statusClass = '';
+            
+            if (review.status === 'pass') {
+                statusIcon = '✅';
+                statusClass = 'status-pass';
+            } else if (review.status === 'warning') {
+                statusIcon = '⚠️';
+                statusClass = 'status-warning';
+            } else if (review.status === 'fail') {
+                statusIcon = '❌';
+                statusClass = 'status-fail';
+            }
+            
+            row.innerHTML = `
+                <div class="review-status-icon ${statusClass}">${statusIcon}</div>
+                <div class="review-doc-info">
+                    <div class="review-doc-name">${review.name}</div>
+                    <div class="review-doc-comment">${review.comment}</div>
+                </div>
+            `;
+            
+            reviewList.appendChild(row);
+        });
+        
+        overallConclusion.textContent = data.conclusion || 'Không có kết luận chung.';
+        reviewResultsContainer.style.display = 'block';
+    }
+
     initializeNoteFeature();
 });
