@@ -206,9 +206,19 @@ document.addEventListener('DOMContentLoaded', () => {
     function getDossierCode() {
         const result = {
             dossierCode: null,
-            hostCountry: null
+            hostCountry: null,
+            facilityName: null,
+            facilityAddress: null,
+            issuingAuthority: null,
+            gmpPrinciple: null,
+            certNumber: null,
+            issueDate: null,
+            expiryDate: null,
+            publishedScope: null,
+            certScope: null
         };
 
+        // 1. Lấy mã hồ sơ từ caption
         const divs = document.querySelectorAll('div.caption.ng-binding');
         for (const div of divs) {
             if (div.textContent.includes('THẨM ĐỊNH HỒ SƠ:')) {
@@ -220,10 +230,58 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
+        // 2. Lấy nước sở tại từ element đặc thù
         const countryElement = document.querySelector('div[ng-if="vm.hoSo.donHang.nuocSoTai"] span.ng-binding');
         if (countryElement) {
             result.hostCountry = countryElement.textContent.trim();
         }
+
+        // 3. Lấy các thông tin khác từ bảng (Label-to-Value strategy)
+        const allLabels = document.querySelectorAll('label.bold.ng-binding');
+        allLabels.forEach(label => {
+            const text = label.textContent.trim();
+            const parentTd = label.closest('td');
+            if (!parentTd) return;
+            
+            const valueTd = parentTd.nextElementSibling;
+            if (!valueTd) return;
+            
+            const valueDiv = valueTd.querySelector('.ng-binding');
+            if (!valueDiv) return;
+            
+            const value = valueDiv.textContent.trim();
+
+            switch (text) {
+                case "Tên cơ sở":
+                    result.facilityName = value;
+                    break;
+                case "Địa chỉ cơ sở sản xuất":
+                    result.facilityAddress = value;
+                    break;
+                case "Cơ quan cấp":
+                    result.issuingAuthority = value;
+                    break;
+                case "Tài liệu GMP áp dụng":
+                    result.gmpPrinciple = value;
+                    break;
+                case "Số giấy chứng nhận":
+                    result.certNumber = value;
+                    break;
+                case "Ngày cấp":
+                    // Format date if needed, keeping raw for now
+                    result.issueDate = value;
+                    break;
+                case "Thời hạn hiệu lực":
+                    result.expiryDate = value;
+                    break;
+                case "Phạm vi chứng nhận":
+                    result.publishedScope = value;
+                    break;
+                case "Phạm vi chứng nhận gốc":
+                    result.certScope = value;
+                    break;
+            }
+        });
 
         return result;
     }
@@ -267,7 +325,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function fetchNoteByCode(dossierCode) {
-        if (!WEB_APP_URL || !dossierCode) return;
+        if (!WEB_APP_URL || !dossierCode) return false;
 
         saveBtn.textContent = '🔄 Đang kiểm tra dữ liệu cũ...';
         saveBtn.disabled = true;
@@ -281,20 +339,33 @@ document.addEventListener('DOMContentLoaded', () => {
             const exactMatch = results.find(item => item.dossierCode === dossierCode);
 
             if (exactMatch) {
-                fillNoteForm(exactMatch);
-                saveBtn.textContent = '✅ Đã tải dữ liệu cũ';
-                setTimeout(() => {
-                    saveBtn.textContent = 'Lưu Ghi Chú';
-                    saveBtn.disabled = false;
-                }, 1500);
-            } else {
-                saveBtn.textContent = 'Lưu Ghi Chú';
-                saveBtn.disabled = false;
+                // Kiểm tra xem bản ghi có thực sự có dữ liệu không (trừ mã hồ sơ)
+                const hasData = [
+                    exactMatch.readingNotes, exactMatch.facilityName, exactMatch.facilityAddress,
+                    exactMatch.certScope, exactMatch.publishedScope, exactMatch.gmpPrinciple,
+                    exactMatch.certNumber, exactMatch.issueDate, exactMatch.expiryDate, exactMatch.issuingAuthority
+                ].some(val => val && val.toString().trim() !== "");
+
+                if (hasData) {
+                    fillNoteForm(exactMatch);
+                    saveBtn.textContent = '✅ Đã tải dữ liệu cũ';
+                    setTimeout(() => {
+                        saveBtn.textContent = 'Lưu Ghi Chú';
+                        saveBtn.disabled = false;
+                    }, 1500);
+                    return true; // Có dữ liệu thực sự
+                }
             }
+            
+            saveBtn.textContent = 'Lưu Ghi Chú';
+            saveBtn.disabled = false;
+            return false; // Không có bản ghi hoặc bản ghi rỗng
+
         } catch (error) {
             console.error('Lỗi khi tải dữ liệu cũ:', error);
             saveBtn.textContent = 'Lưu Ghi Chú';
             saveBtn.disabled = false;
+            return false;
         }
     }
 
@@ -419,6 +490,36 @@ document.addEventListener('DOMContentLoaded', () => {
         input.addEventListener('input', saveSessionData);
     });
 
+    function autoFillFromPage(pageData) {
+        if (!pageData) return;
+
+        facilityName.value = pageData.facilityName || '';
+        facilityAddress.value = pageData.facilityAddress || '';
+        issuingAuthority.value = pageData.issuingAuthority || '';
+        gmpPrinciple.value = pageData.gmpPrinciple || '';
+        certNumber.value = pageData.certNumber || '';
+        publishedScope.value = pageData.publishedScope || '';
+        certScope.value = pageData.certScope || '';
+
+        // Chuyển đổi định dạng ngày DD/MM/YYYY -> YYYY-MM-DD
+        const convertDate = (dateStr) => {
+            if (!dateStr || !dateStr.includes('/')) return '';
+            const parts = dateStr.split('/');
+            if (parts.length !== 3) return '';
+            // Đảm bảo định dạng YYYY-MM-DD
+            const day = parts[0].padStart(2, '0');
+            const month = parts[1].padStart(2, '0');
+            const year = parts[2];
+            return `${year}-${month}-${day}`;
+        };
+
+        issueDate.value = convertDate(pageData.issueDate);
+        expiryDate.value = convertDate(pageData.expiryDate);
+
+        // Lưu vào session ngay sau khi điền
+        saveSessionData();
+    }
+
     async function initializeNoteFeature() {
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
         if (!tab) return;
@@ -442,13 +543,14 @@ document.addEventListener('DOMContentLoaded', () => {
             noteLabel.textContent = `Ghi chú hồ sơ số: ${currentDossierCode}`;
             noteFieldset.disabled = false;
 
-            // Kiểm tra bộ nhớ phiên trước
+            // 1. Kiểm tra bộ nhớ phiên trước
             const hasCachedData = await loadSessionData(dossierCode);
             
             if (!hasCachedData) {
                 // Nếu không có cache mới gửi lệnh quét PDF
                 chrome.runtime.sendMessage({ type: 'SIDEPANEL_READY' });
                 
+                // Reset form
                 readingNotesTextarea.value = '';
                 facilityName.value = '';
                 facilityAddress.value = '';
@@ -460,8 +562,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 expiryDate.value = '';
                 issuingAuthority.value = '';
 
-                // Tự động tải dữ liệu từ Sheet (chỉ khi không có cache)
-                fetchNoteByCode(dossierCode);
+                // 2. Tải dữ liệu từ Sheet (chỉ khi không có cache)
+                const hasSheetData = await fetchNoteByCode(dossierCode);
+                
+                // 3. Nếu Sheet cũng không có dữ liệu (hoặc bản ghi rỗng), tự động điền từ trang web
+                if (!hasSheetData) {
+                    console.log('Không tìm thấy dữ liệu cũ, đang tự động điền từ trang web...');
+                    autoFillFromPage(pageData);
+                }
             }
 
             if (hostCountry && countryNotes[hostCountry]) {
@@ -773,13 +881,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
             reviewProgress.textContent = 'Đang gửi dữ liệu lên máy chủ...';
 
+            // Thu thập dữ liệu hồ sơ hiện tại
+            const dossierData = {
+                dossierCode: currentDossierCode,
+                facilityName: facilityName.value,
+                facilityAddress: facilityAddress.value,
+                issuingAuthority: issuingAuthority.value,
+                gmpPrinciple: gmpPrinciple.value,
+                certNumber: certNumber.value,
+                issueDate: issueDate.value,
+                expiryDate: expiryDate.value,
+                publishedScope: publishedScope.value,
+                certScope: certScope.value
+            };
+
             // POST to mock backend
             const backendResponse = await fetch('http://localhost:8000/review-dossier', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ files: processedFiles })
+                body: JSON.stringify({ 
+                    files: processedFiles,
+                    dossier_data: dossierData
+                })
             });
 
             if (!backendResponse.ok) {
