@@ -879,20 +879,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error('Không thể tải bất kỳ file nào.');
             }
 
+            reviewProgress.textContent = 'Đang lấy dữ liệu hồ sơ từ trang web...';
+
+            // 1. Quét lại dữ liệu từ trang web để đảm bảo độ chính xác
+            const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+            const injectionResults = await chrome.scripting.executeScript({
+                target: { tabId: tab.id },
+                function: getDossierCode,
+            });
+            const freshPageData = injectionResults[0].result;
+
             reviewProgress.textContent = 'Đang gửi dữ liệu lên máy chủ...';
 
-            // Thu thập dữ liệu hồ sơ hiện tại
+            // 2. Thu thập dữ liệu hồ sơ trực tiếp từ trang web
             const dossierData = {
-                dossierCode: currentDossierCode,
-                facilityName: facilityName.value,
-                facilityAddress: facilityAddress.value,
-                issuingAuthority: issuingAuthority.value,
-                gmpPrinciple: gmpPrinciple.value,
-                certNumber: certNumber.value,
-                issueDate: issueDate.value,
-                expiryDate: expiryDate.value,
-                publishedScope: publishedScope.value,
-                certScope: certScope.value
+                dossierCode: freshPageData.dossierCode || currentDossierCode,
+                facilityName: freshPageData.facilityName || '',
+                facilityAddress: freshPageData.facilityAddress || '',
+                issuingAuthority: freshPageData.issuingAuthority || '',
+                gmpPrinciple: freshPageData.gmpPrinciple || '',
+                certNumber: freshPageData.certNumber || '',
+                issueDate: freshPageData.issueDate || '',
+                expiryDate: freshPageData.expiryDate || '',
+                publishedScope: freshPageData.publishedScope || '',
+                certScope: freshPageData.certScope || ''
             };
 
             // POST to mock backend
